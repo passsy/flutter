@@ -64,23 +64,21 @@ void main() {
       expect(decodedRed, 'flutter: \x1B[31mRed text\x1B[0m');
     });
 
-    testWithoutContext('decodeSyslog decodes DEL control character', () {
-      // \134^? is the vis encoding for DEL (0x7F)
-      // ^? is the caret notation for DEL
+    testWithoutContext('decodeSyslog leaves DEL control character encoded', () {
+      // \134^? should remain encoded to prevent DEL (0x7F) from affecting the terminal
+      // Only ESC (^[) is decoded for ANSI colors, other control chars stay safe
       final String decoded = decodeSyslog(r'flutter: DEL: [\134^?]');
-      expect(decoded, 'flutter: DEL: [\x7F]');
+      expect(decoded, r'flutter: DEL: [\134^?]');
     });
 
-    testWithoutContext('decodeSyslog decodes other control characters', () {
-      // \134^G is the vis encoding for BEL (0x07)
-      // G = 0x47, ^G = 0x47 & 0x1F = 0x07
+    testWithoutContext('decodeSyslog leaves other control characters encoded', () {
+      // \134^G should remain encoded to prevent BEL (0x07) from beeping
       final String decodedBell = decodeSyslog(r'flutter: Bell: [\134^G]');
-      expect(decodedBell, 'flutter: Bell: [\x07]');
+      expect(decodedBell, r'flutter: Bell: [\134^G]');
 
-      // \134^A is the vis encoding for SOH (0x01)
-      // A = 0x41, ^A = 0x41 & 0x1F = 0x01
+      // \134^A should remain encoded to prevent SOH (0x01) control character
       final String decodedSOH = decodeSyslog(r'flutter: SOH: [\134^A]');
-      expect(decodedSOH, 'flutter: SOH: [\x01]');
+      expect(decodedSOH, r'flutter: SOH: [\134^A]');
     });
 
     testWithoutContext('decodeSyslog passes through non-encoded text', () {

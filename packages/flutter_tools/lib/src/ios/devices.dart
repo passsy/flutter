@@ -1337,26 +1337,29 @@ String decodeSyslog(String line) {
           out.add(bytes[i + 3] | 0x80);
           i += 4;
         } else if (bytes[i + 1] == kCaret && i + 2 < bytes.length) {
-          // \^x form: control characters 0x00-0x1f and 0x7f.
+          // \^x form: only decode ESC (^[) for ANSI colors, leave other control characters encoded.
           final int controlChar = bytes[i + 2];
-          if (controlChar == 0x3F) { // '?'
-            out.add(0x7F); // DEL
+          if (controlChar == 0x5B) { // '[' = ESC for ANSI color codes
+            out.add(0x1B); // ESC
+            i += 3;
           } else {
-            out.add(controlChar & 0x1F);
+            // Don't decode other control characters (BEL, DEL, etc.) - leave them encoded
+            out.addAll(bytes.getRange(i, i + 3));
+            i += 3;
           }
-          i += 3;
         } else if (i + 5 < bytes.length &&
                    bytes[i + 1] == 0x31 && bytes[i + 2] == 0x33 && bytes[i + 3] == 0x34 && // "134"
                    bytes[i + 4] == kCaret) {
-          // \134^x form: octal backslash followed by control character (0x00-0x1f, 0x7f).
-          // This is how vis encodes \^x when the backslash itself is in octal form.
+          // \134^x form: only decode ESC (^[) for ANSI colors, leave other control characters encoded.
           final int controlChar = bytes[i + 5];
-          if (controlChar == 0x3F) { // '?'
-            out.add(0x7F); // DEL
+          if (controlChar == 0x5B) { // '[' = ESC for ANSI color codes
+            out.add(0x1B); // ESC
+            i += 6;
           } else {
-            out.add(controlChar & 0x1F);
+            // Don't decode other control characters (BEL, DEL, etc.) - leave them encoded
+            out.addAll(bytes.getRange(i, i + 6));
+            i += 6;
           }
-          i += 6;
         } else if (bytes.getRange(i + 1, i + 4).every(isDigit)) {
           // \ddd form: octal representation (only used for \134 and \240).
           out.add(decodeOctal(bytes[i + 1], bytes[i + 2], bytes[i + 3]));
