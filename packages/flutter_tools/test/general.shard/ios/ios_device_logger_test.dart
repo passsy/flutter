@@ -64,6 +64,31 @@ void main() {
       expect(decodedRed, 'flutter: \x1B[31mRed text\x1B[0m');
     });
 
+    testWithoutContext('decodeSyslog decodes DEL control character', () {
+      // \134^? is the vis encoding for DEL (0x7F)
+      // ^? is the caret notation for DEL
+      final String decoded = decodeSyslog(r'flutter: DEL: [\134^?]');
+      expect(decoded, 'flutter: DEL: [\x7F]');
+    });
+
+    testWithoutContext('decodeSyslog decodes other control characters', () {
+      // \134^G is the vis encoding for BEL (0x07)
+      // G = 0x47, ^G = 0x47 & 0x1F = 0x07
+      final String decodedBell = decodeSyslog(r'flutter: Bell: [\134^G]');
+      expect(decodedBell, 'flutter: Bell: [\x07]');
+
+      // \134^A is the vis encoding for SOH (0x01)
+      // A = 0x41, ^A = 0x41 & 0x1F = 0x01
+      final String decodedSOH = decodeSyslog(r'flutter: SOH: [\134^A]');
+      expect(decodedSOH, 'flutter: SOH: [\x01]');
+    });
+
+    testWithoutContext('decodeSyslog passes through non-encoded text', () {
+      // A literal ? character without \134^ should pass through unchanged
+      final String decoded = decodeSyslog(r'flutter: Question: [?]');
+      expect(decoded, 'flutter: Question: [?]');
+    });
+
     testWithoutContext(
       'IOSDeviceLogReader suppresses non-Flutter lines from output with syslog',
       () async {
