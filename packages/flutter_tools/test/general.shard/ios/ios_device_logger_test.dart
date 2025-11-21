@@ -56,6 +56,14 @@ void main() {
       expect(decoded, r'I \M-b\M^O syslog!');
     });
 
+    testWithoutContext('decodeSyslog decodes ANSI escape sequences from NSLog', () {
+      // These are the actual encoded values from idevicesyslog when using NSLog with ANSI codes
+      // \134 is octal for backslash, ^[ is control notation for ESC (0x1B)
+      // NSLog("flutter: \u{1B}[31mRed text\u{1B}[0m")
+      final String decodedRed = decodeSyslog(r'flutter: \134^[[31mRed text\134^[[0m');
+      expect(decodedRed, 'flutter: \x1B[31mRed text\x1B[0m');
+    });
+
     testWithoutContext(
       'IOSDeviceLogReader suppresses non-Flutter lines from output with syslog',
       () async {
