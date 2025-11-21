@@ -1327,21 +1327,45 @@ String decodeSyslog(String line) {
         // Unmapped byte: copy as-is.
         out.add(bytes[i++]);
       } else {
-        // Mapped byte: decode next 4 bytes.
+        // Mapped byte: decode next 3-6 bytes.
         if (bytes[i + 1] == kM && bytes[i + 2] == kCaret) {
           // \M^x form: bytes in range 0x80 to 0x9f.
           out.add((bytes[i + 3] & 0x7f) + 0x40);
+          i += 4;
         } else if (bytes[i + 1] == kM && bytes[i + 2] == kDash) {
           // \M-x form: bytes in range 0xa0 to 0xf7.
           out.add(bytes[i + 3] | 0x80);
-        } else if (bytes.getRange(i + 1, i + 3).every(isDigit)) {
+          i += 4;
+        } else if (bytes[i + 1] == kCaret && i + 2 < bytes.length) {
+          // \^x form: control characters 0x00-0x1f and 0x7f.
+          final int controlChar = bytes[i + 2];
+          if (controlChar == 0x3F) { // '?'
+            out.add(0x7F); // DEL
+          } else {
+            out.add(controlChar & 0x1F);
+          }
+          i += 3;
+        } else if (i + 5 < bytes.length &&
+                   bytes[i + 1] == 0x31 && bytes[i + 2] == 0x33 && bytes[i + 3] == 0x34 && // "134"
+                   bytes[i + 4] == kCaret) {
+          // \134^x form: octal backslash followed by control character (0x00-0x1f, 0x7f).
+          // This is how vis encodes \^x when the backslash itself is in octal form.
+          final int controlChar = bytes[i + 5];
+          if (controlChar == 0x3F) { // '?'
+            out.add(0x7F); // DEL
+          } else {
+            out.add(controlChar & 0x1F);
+          }
+          i += 6;
+        } else if (bytes.getRange(i + 1, i + 4).every(isDigit)) {
           // \ddd form: octal representation (only used for \134 and \240).
           out.add(decodeOctal(bytes[i + 1], bytes[i + 2], bytes[i + 3]));
+          i += 4;
         } else {
           // Unknown form: copy as-is.
-          out.addAll(bytes.getRange(0, 4));
+          out.addAll(bytes.getRange(i, i + 4));
+          i += 4;
         }
-        i += 4;
       }
     }
     return utf8.decode(out);
