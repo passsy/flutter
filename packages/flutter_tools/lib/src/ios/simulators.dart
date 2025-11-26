@@ -29,6 +29,7 @@ import '../project.dart';
 import '../protocol_discovery.dart';
 import '../vmservice.dart';
 import 'application_package.dart';
+import 'devices.dart';
 import 'mac.dart';
 import 'plist_parser.dart';
 
@@ -982,7 +983,9 @@ class _IOSSimulatorLogReader extends DeviceLogReader {
       try {
         final Object? decodedJson = jsonDecode(message);
         if (decodedJson is String) {
-          _linesController.add(decodedJson);
+          // System logs may contain vis-encoded control characters (e.g., \134^[ for ESC).
+          // Decode them to enable ANSI color codes in simulator logs.
+          _linesController.add(decodeSyslog(decodedJson));
         }
       } on FormatException {
         globals.printError('Logger returned non-JSON response: $message');
